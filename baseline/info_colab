@@ -1,0 +1,23 @@
+
+This notebook integrates:
+- **Task #1:** A discrete meta-action REINFORCE agent.
+- **Task #2:** A continuous-action REINFORCE agent.
+- **Task #3:** A detailed description of the Highway environment.
+
+## How to Run the Notebook
+
+1. **Install Dependencies:**
+   - Ensure you have `gym`, `highway-env`, `torch`, `numpy`, and `matplotlib` installed.
+   - Use: `pip install gym highway-env torch numpy matplotlib`
+
+2. **Training Agents:**
+   - Uncomment the corresponding lines in the code cells for the discrete and continuous agents to train them.
+   - Run each cell sequentially.
+
+3. **Visualization:**
+   - Training reward plots are generated after training to visualize the learning progress.
+
+4. **Environment Details:**
+   - Refer to the Environment Description section for a complete understanding of action spaces, controllers, vehicle dynamics, rewards, and observations.
+
+This integrated notebook provides all necessary code, documentation, and instructions to complete the project.
