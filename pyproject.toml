@@ -1,0 +1,177 @@
+[tool.poetry]
+name = "crash-cource-to-reinforce"
+version = "0.0.1"
+description = "Driving through the busy highway with REINFORCE autopilot."
+authors = [
+  "Makar Korchagin", 
+  "Ilya Zherebtsov",
+  "Rinat Prochii",
+  "Aibek Akhmetkazy",
+  "Mikhail Gubanov"
+]
+readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/Makkarik/crash-cource-to-reinforce"
+repository = "https://github.com/Makkarik/crash-cource-to-reinforce"
+
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = "^2.2.2"
+pygame = "^2.6.1"
+gymnasium = "^1.0.0"
+ipykernel = "^6.29.5"
+tqdm = "^4.67.1"
+matplotlib = "^3.10.0"
+seaborn = "^0.13.2"
+moviepy = "^2.1.2"
+torch = {version = "2.6.0", source = "torch"}
+
+[[tool.poetry.source]]
+name = "torch"
+url = "https://download.pytorch.org/whl/cu126"
+priority = "explicit"
+
+[tool.poetry.dev-dependencies]
+pre-commit = "^4.1.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312" 
+fix = true
+preview = true
+
+exclude = ["__init__.py"]
+
+[tool.ruff.lint]
+select = [
+  # McCabe complexity
+  "C",
+  # error messages
+  "EM",
+  # pyflakes
+  "F",
+  # pycodestyle errors and warnings
+  "E", "W",
+  # docstrings convention
+  "D",
+  # pep8-naming
+  "N",
+  # imports
+  "I",
+  # security
+  "S",
+  # flake8-2020
+  "YTT",
+  # flake8-bugbear
+  "B",
+  # flake8-quotes
+  "Q",
+  # flake8-debugger
+  "T10",
+  # flake8-gettext
+  "INT",
+  # pylint
+  "PL",
+  # flake8-pytest-style
+  "PT",
+  # misc lints
+  "PIE",
+  # flake8-pyi
+  "PYI",
+  # tidy imports
+  "TID",
+  # implicit string concatenation
+  "ISC",
+  # type-checking imports
+  "TCH",
+  # pygrep-hooks
+  "PGH",
+  # Ruff-specific rules
+  "RUF",
+  # numpy-legacy-random
+  "NPY002",
+  # Perflint
+  "PERF",
+  # flynt
+  "FLY",
+  # flake8-logging-format
+  "G",
+  # flake8-future-annotations
+  "FA",
+  # unconventional-import-alias
+  "ICN001",
+  # flake8-slots
+  "SLOT",
+  # flake8-raise
+  "RSE",
+  # pyupgrade
+  "UP",
+]
+
+ignore = [
+  ### Intentionally disabled
+  # module level import not at top of file
+  "E402",
+  # do not assign a lambda expression, use a def
+  "E731",
+  # controversial
+  "B007",
+  # controversial
+  "B008",
+  # setattr is used to side-step mypy
+  "B009",
+  # getattr is used to side-step mypy
+  "B010",
+  # tests use comparisons but not their returned value
+  "B015",
+  # Function definition does not bind loop variable
+  "B023",
+  # Only works with python >=3.10
+  "B905",
+  # Too many arguments to function call
+  "PLR0913",
+  # Too many returns
+  "PLR0911",
+  # Too many branches
+  "PLR0912",
+  # Too many statements
+  "PLR0915",
+  # Redefined loop name
+  "PLW2901",
+  # Global statements are discouraged
+  "PLW0603",
+  # Use `typing.NamedTuple` instead of `collections.namedtuple`
+  "PYI024",
+  # Use of possibly insecure function; consider using ast.literal_eval
+  "S307",
+  # while int | float can be shortened to float, the former is more explicit
+  "PYI041",
+  # incorrect-dict-iterator, flags valid Series.items usage
+  "PERF102",
+  # try-except-in-loop, becomes useless in Python 3.11
+  "PERF203",
+  # pytest-parametrize-names-wrong-type
+  "PT006",
+  # pytest-parametrize-values-wrong-type
+  "PT007",
+  # pytest-patch-with-lambda
+  "PT008",
+  # pytest-raises-with-multiple-statements
+  "PT012",
+  # pytest-assert-in-except
+  "PT017",
+  # pytest-composite-assertion
+  "PT018",
+  # pytest-fixture-param-without-value
+  "PT019",
+  # The following rules may cause conflicts when used with the formatter:
+  "ISC001",
+  # if-stmt-min-max
+  "PLR1730",
+]
