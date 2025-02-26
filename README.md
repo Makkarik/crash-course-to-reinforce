@@ -20,3 +20,7 @@ git clone git@github.com:Makkarik/crash-course-to-reinforce.git
 cd crash-course-to-reinforce
 poetry install
 ```
+
+##Google colab
+
+To have a general look you can open the project in [Colab](https://colab.research.google.com/drive/118n5VVp8rQhArGn3dmUs3jpcAZ2lNUrP?usp=sharing)
