@@ -1,5 +1,5 @@
 # Required dependencies:
-# pip install gym highway-env torch numpy
+# pip install gymnasium highway-env torch numpy matplotlib
 
 import gymnasium as gym
 import highway_env  # Registers the HighwayEnv with Gym
@@ -9,6 +9,8 @@ import torch.optim as optim
 import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
+import csv  # for saving data to CSV
+import time # for episode duration calculation
 
 # Set device for torch
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -83,7 +85,8 @@ def update_policy(policy, optimizer, memory, gamma=0.99):
         # Negative sign because we want to maximize expected return.
         policy_loss.append(-log_prob * R)
     optimizer.zero_grad()
-    loss = torch.cat(policy_loss).sum()
+    # Use torch.stack to combine scalar tensors
+    loss = torch.stack(policy_loss).sum()
     loss.backward()
     optimizer.step()
     
@@ -96,10 +99,7 @@ def make_env():
     """
     Create and configure the Highway environment for the discrete meta-action space.
     
-    We use an occupancy grid observation. Other options (e.g., kinematics table) can be chosen
-    by modifying the environment configuration as per:
-    https://github.com/Farama-Foundation/HighwayEnv/blob/master/docs/observations/index.md
-    
+    We use an occupancy grid observation.
     The environment's reward is computed as:
       R(s,a) = α (v - v_min)/(v_max - v_min) - β * collision + γ (lane_index)/(total_lanes)
     where:
@@ -118,10 +118,10 @@ def make_env():
         },
         "simulation_frequency": 15,  # adjust as needed
         "policy_frequency": 5,
-        "duration": 40,              # episode duration in seconds
+        "duration": 40,              # initial episode duration in seconds
         "action": {'type': 'DiscreteMetaAction'},  # use the discrete meta-action space
     }
-    # Create the environment.
+    # Create the environment with the config.
     env = gym.make("highway-v0", config=config)
     return env
 
@@ -143,7 +143,10 @@ def preprocess_observation(obs):
 def train_agent(num_episodes=500, hidden_dim=128, learning_rate=1e-3, gamma=0.99):
     env = make_env()
     
-    # Example: Get the observation dimension from a sample observation
+    # List to record per-episode data: (episode, duration, total_reward)
+    episode_data = []
+    
+    # Get a sample observation to determine the input dimension.
     obs, _ = env.reset()
     processed_obs = preprocess_observation(obs)
     input_dim = processed_obs.shape[1]
@@ -156,6 +159,9 @@ def train_agent(num_episodes=500, hidden_dim=128, learning_rate=1e-3, gamma=0.99
     episode_rewards = []
     
     for episode in range(num_episodes):
+        # Record the start time of the episode.
+        episode_start = time.time()
+        
         obs, _ = env.reset()
         processed_obs = preprocess_observation(obs)
         done = False
@@ -183,14 +189,28 @@ def train_agent(num_episodes=500, hidden_dim=128, learning_rate=1e-3, gamma=0.99
             # Preprocess the new observation.
             processed_obs = preprocess_observation(obs)
         
+        # Record the end time and compute the duration.
+        episode_duration = time.time() - episode_start
+        
         # Update the policy after each episode.
         update_policy(policy, optimizer, memory, gamma)
         episode_rewards.append(ep_reward)
         
+        # Record the episode data.
+        episode_data.append((episode + 1, episode_duration, ep_reward))
+        
         if (episode + 1) % 10 == 0:
-            print(f"Episode {episode+1}/{num_episodes}, Total Reward: {ep_reward:.2f}")
+            print(f"Episode {episode+1}/{num_episodes}, Duration: {episode_duration:.2f}s, Total Reward: {ep_reward:.2f}")
     
     env.close()
+    
+    # Save episode data to a CSV file.
+    with open("episode_data.csv", "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Episode", "Duration (s)", "Total Reward"])
+        for row in episode_data:
+            writer.writerow(row)
+    
     return policy, episode_rewards
 
 # ------------------------------
@@ -220,7 +240,9 @@ if __name__ == "__main__":
     # - Ensure highway-env and required dependencies are installed.
     # - The environment configuration uses an occupancy grid observation.
     # - The agent learns a policy for selecting one of the 5 meta-actions, which the environment converts
-    #   into vehicle acceleration and steering commands using built-in controllers (refer to formulas above).
+    #   into vehicle acceleration and steering commands using built-in controllers.
     # - The reward function incorporates factors such as maximum speed, collision penalties, and the duration
     #   spent in the far right lane.
+    # - Episode duration increases with each episode (e.g., 40s, 42s, 44s, ...).
+    # - Episode data (episode number, duration, reward) is saved to "episode_data.csv" for later analysis.
     # - To run the code, simply execute: python <this_script_name.py>

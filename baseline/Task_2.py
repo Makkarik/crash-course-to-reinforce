@@ -8,6 +8,8 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
+import time         # For measuring episode duration
+import csv          # For saving data to CSV
 
 # Set device for torch
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -113,14 +115,14 @@ def make_env_continuous():
     config = {
         "observation": {
             "type": "OccupancyGrid",  # Can also use "Kinematics" or "TimeToCollision"
-           "grid_size": [[-5, 5], [-5, 5]],  # Two dimensions: x from -5 to 5 and y from -5 to 5
+            "grid_size": [[-5, 5], [-5, 5]],  # Two dimensions: x from -5 to 5 and y from -5 to 5
             "grid_step": [2.0, 2.0],         # Specify step for each dimension
             "features": ["presence", "vx"]  # Example features: vehicle presence and relative x-speed
         },
         "simulation_frequency": 15,  # Simulation frequency in Hz
         "policy_frequency": 5,       # How often the policy is applied
         "duration": 40,              # Episode duration in seconds
-        "action": {"type": "ContinuousAction"} # Select the continuous action space
+        "action": {"type": "ContinuousAction"}  # Select the continuous action space
     }
     
     env = gym.make("highway-v0", config=config)
@@ -163,6 +165,9 @@ def train_agent_continuous(num_episodes=500, hidden_dim=128, learning_rate=1e-3,
     """
     env = make_env_continuous()
     
+    # List to record per-episode data: (episode, duration, total_reward)
+    episode_data = []
+    
     # Sample an observation to determine the input dimension
     obs, _ = env.reset()
     processed_obs = preprocess_observation(obs)
@@ -176,6 +181,9 @@ def train_agent_continuous(num_episodes=500, hidden_dim=128, learning_rate=1e-3,
     episode_rewards = []
     
     for episode in range(num_episodes):
+        # Record start time for this episode.
+        episode_start = time.time()
+        
         obs, _ = env.reset()
         processed_obs = preprocess_observation(obs)
         done = False
@@ -205,14 +213,28 @@ def train_agent_continuous(num_episodes=500, hidden_dim=128, learning_rate=1e-3,
             # Preprocess the new observation.
             processed_obs = preprocess_observation(obs)
         
+        # Compute episode duration using wall-clock time.
+        episode_duration = time.time() - episode_start
+        
         # Update the policy network after each episode.
         update_policy(policy, optimizer, memory, gamma)
         episode_rewards.append(ep_reward)
         
+        # Record the episode data: (episode number, duration, total reward)
+        episode_data.append((episode + 1, episode_duration, ep_reward))
+        
         if (episode + 1) % 10 == 0:
-            print(f"Episode {episode+1}/{num_episodes}, Total Reward: {ep_reward:.2f}")
+            print(f"Episode {episode+1}/{num_episodes}, Duration: {episode_duration:.2f}s, Total Reward: {ep_reward:.2f}")
     
     env.close()
+    
+    # Save episode data to a CSV file.
+    with open("episode_data_continuous.csv", "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Episode", "Duration (s)", "Total Reward"])
+        for row in episode_data:
+            writer.writerow(row)
+    
     return policy, episode_rewards
 
 # ------------------------------
@@ -245,4 +267,7 @@ if __name__ == "__main__":
     # - The built-in controllers (using the formulas above) handle converting these
     #   values into vehicle dynamics.
     # - The reward function considers vehicle speed, collisions, and lane preference.
+    # - Wall-clock duration for each episode is measured and recorded.
+    # - Episode data (episode number, duration in seconds, total reward) is saved to
+    #   "episode_data_continuous.csv" for later analysis.
     # - To run, save this script (e.g., train_continuous_reinforce.py) and execute with Python.
