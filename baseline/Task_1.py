@@ -1,7 +1,7 @@
 # Required dependencies:
 # pip install gym highway-env torch numpy
 
-import gym
+import gymnasium as gym
 import highway_env  # Registers the HighwayEnv with Gym
 import torch
 import torch.nn as nn
@@ -106,24 +106,23 @@ def make_env():
       - v, v_min, v_max are the current, minimum, and maximum speeds.
       - α, β, γ are coefficients.
     """
-    # Create the environment.
-    env = gym.make("highway-v0")
-    
+
     # Configure the environment:
     config = {
         "observation": {
             # Use an occupancy grid. The grid size and features can be adjusted.
             "type": "OccupancyGrid",  # or "Kinematics" / "TimeToCollision"
-            "grid_size": [10, 10],    # grid dimensions (W x H)
-            "grid_step": 2.0,         # cell size
+            "grid_size": [[-5, 5], [-5, 5]],  # Two dimensions: x from -5 to 5 and y from -5 to 5
+            "grid_step": [2.0, 2.0],         # Specify step for each dimension
             "features": ["presence", "vx"]  # presence and relative speed features
         },
         "simulation_frequency": 15,  # adjust as needed
         "policy_frequency": 5,
         "duration": 40,              # episode duration in seconds
-        "action": "DiscreteMetaAction",  # use the discrete meta-action space
+        "action": {'type': 'DiscreteMetaAction'},  # use the discrete meta-action space
     }
-    env.configure(config)
+    # Create the environment.
+    env = gym.make("highway-v0", config=config)
     return env
 
 def preprocess_observation(obs):
@@ -145,7 +144,7 @@ def train_agent(num_episodes=500, hidden_dim=128, learning_rate=1e-3, gamma=0.99
     env = make_env()
     
     # Example: Get the observation dimension from a sample observation
-    obs = env.reset()
+    obs, _ = env.reset()
     processed_obs = preprocess_observation(obs)
     input_dim = processed_obs.shape[1]
     output_dim = 5  # Five meta-actions: LANE_LEFT, IDLE, LANE_RIGHT, FASTER, SLOWER
@@ -157,7 +156,7 @@ def train_agent(num_episodes=500, hidden_dim=128, learning_rate=1e-3, gamma=0.99
     episode_rewards = []
     
     for episode in range(num_episodes):
-        obs = env.reset()
+        obs, _ = env.reset()
         processed_obs = preprocess_observation(obs)
         done = False
         ep_reward = 0
@@ -173,7 +172,8 @@ def train_agent(num_episodes=500, hidden_dim=128, learning_rate=1e-3, gamma=0.99
             memory.log_probs.append(m.log_prob(action))
             
             # Step the environment with the chosen meta-action.
-            obs, reward, done, info = env.step(action.item())
+            obs, reward, terminated, truncated, info = env.step(action.item())
+            done = terminated or truncated
             # The reward is computed using the formula:
             # R(s,a) = α (v - v_min)/(v_max - v_min) - β * collision + γ (lane index)/(total_lanes)
             # where the internal dynamics (vehicle speed, collisions, lane changes) are handled by the environment.
@@ -203,7 +203,8 @@ def plot_rewards(rewards):
     plt.ylabel("Total Reward")
     plt.title("Training Reward per Episode (REINFORCE - Discrete Agent)")
     plt.legend()
-    plt.show()
+    plt.savefig("training_rewards_1.png")
+    plt.close()
 
 # ------------------------------
 # Main execution block
