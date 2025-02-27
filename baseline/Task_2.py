@@ -1,7 +1,7 @@
 # Required dependencies:
 # pip install gym highway-env torch numpy matplotlib
 
-import gym
+import gymnasium as gym
 import highway_env  # Registers the HighwayEnv with Gym
 import torch
 import torch.nn as nn
@@ -89,7 +89,7 @@ def update_policy(policy, optimizer, memory, gamma=0.99):
         policy_loss.append(-log_prob * R)
     
     optimizer.zero_grad()
-    loss = torch.cat(policy_loss).sum()
+    loss = torch.stack(policy_loss).sum()
     loss.backward()
     optimizer.step()
     
@@ -109,22 +109,21 @@ def make_env_continuous():
     The observation is configured as an occupancy grid. The environment's reward is given by:
       R(s,a) = α (v - v_min)/(v_max - v_min) - β * collision + γ (lane index)/(total_lanes)
     """
-    env = gym.make("highway-v0")
     
     config = {
         "observation": {
             "type": "OccupancyGrid",  # Can also use "Kinematics" or "TimeToCollision"
-            "grid_size": [10, 10],    # Dimensions of the occupancy grid
-            "grid_step": 2.0,         # Resolution of each grid cell
+           "grid_size": [[-5, 5], [-5, 5]],  # Two dimensions: x from -5 to 5 and y from -5 to 5
+            "grid_step": [2.0, 2.0],         # Specify step for each dimension
             "features": ["presence", "vx"]  # Example features: vehicle presence and relative x-speed
         },
         "simulation_frequency": 15,  # Simulation frequency in Hz
         "policy_frequency": 5,       # How often the policy is applied
         "duration": 40,              # Episode duration in seconds
-        "action": "ContinuousAction" # Select the continuous action space
+        "action": {"type": "ContinuousAction"} # Select the continuous action space
     }
     
-    env.configure(config)
+    env = gym.make("highway-v0", config=config)
     return env
 
 def preprocess_observation(obs):
@@ -165,7 +164,7 @@ def train_agent_continuous(num_episodes=500, hidden_dim=128, learning_rate=1e-3,
     env = make_env_continuous()
     
     # Sample an observation to determine the input dimension
-    obs = env.reset()
+    obs, _ = env.reset()
     processed_obs = preprocess_observation(obs)
     input_dim = processed_obs.shape[1]
     
@@ -177,7 +176,7 @@ def train_agent_continuous(num_episodes=500, hidden_dim=128, learning_rate=1e-3,
     episode_rewards = []
     
     for episode in range(num_episodes):
-        obs = env.reset()
+        obs, _ = env.reset()
         processed_obs = preprocess_observation(obs)
         done = False
         ep_reward = 0
@@ -198,7 +197,8 @@ def train_agent_continuous(num_episodes=500, hidden_dim=128, learning_rate=1e-3,
             continuous_action = np.array([a, delta])
             
             # Step the environment with the continuous action.
-            obs, reward, done, info = env.step(continuous_action)
+            obs, reward, terminated, truncated, info = env.step(continuous_action)
+            done = terminated or truncated
             memory.rewards.append(reward)
             ep_reward += reward
             
@@ -225,7 +225,8 @@ def plot_rewards(rewards):
     plt.ylabel("Total Reward")
     plt.title("Training Reward per Episode (REINFORCE - Continuous Agent)")
     plt.legend()
-    plt.show()
+    plt.savefig("training_rewards_2.png")
+    plt.close()
 
 # ------------------------------
 # Main execution block
