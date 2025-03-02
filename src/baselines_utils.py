@@ -16,7 +16,7 @@ from rl_agents.agents.common.factory import agent_factory
 def benchmark(  # noqa: PLR0914
     env_configs: dict[dict],
     agent_configs: dict[dict],
-    episodes: int = 100,
+    episodes: int = 1000,
     folder: str = "./results/baselines",
 ) -> pd.DataFrame:
     """Run a benchmark for the given environment and agent configurations.
@@ -70,7 +70,7 @@ def benchmark(  # noqa: PLR0914
             video_length=length,
             episode_trigger=trigger,
         )
-        env = gym.wrappers.RecordEpisodeStatistics(env=env)
+        env = gym.wrappers.RecordEpisodeStatistics(env=env, buffer_length=episodes)
 
         # Define the agent
         agent = agent_factory(env, agent_config[1])
