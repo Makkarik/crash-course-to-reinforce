@@ -5,7 +5,6 @@ from itertools import product
 
 import gymnasium as gym
 import highway_env  # noqa: F401
-import imageio
 import numpy as np
 import pandas as pd
 import tqdm
@@ -114,78 +113,6 @@ def cumulative(input: np.ndarray) -> np.ndarray:
         input[i] = temp
     steps = np.arange(input.size)
     return steps, input
-
-
-def show_stats(env: gym.Wrapper, episode_length: int, roll_length: int = 100) -> Figure:
-    """Show the inference statistics.
-
-    Parameters
-    ----------
-    env : gym.Wrapper
-        An environment wrapper.
-    episode_length : int
-        A maximum length of the episode [steps].
-    roll_length : int
-        A length of rolling average.
-
-    Returns
-    -------
-    fig : Figure
-        A figure to save.
-
-    """
-    fig, axs = plt.subplots(ncols=2, figsize=(16, 4))
-    axs = axs.flatten()
-    axs[0].set_title("Episode rewards", fontsize=14)
-    axs[0].grid()
-    axs[0].plot(*moving_average(env.return_queue, roll_length))
-    axs[0].axhline(
-        np.mean(env.return_queue), color="red", linestyle="--", label="Mean reward"
-    )
-    axs[0].legend(fontsize=12)
-    axs[0].set_xlabel("Episode", fontsize=12)
-    axs[0].set_ylabel("Reward [points]", fontsize=12)
-
-    rel_length = np.array(env.length_queue) / episode_length
-
-    axs[1].set_title("Episode relative length", fontsize=14)
-    axs[1].grid()
-    axs[1].plot(*moving_average(rel_length, roll_length))
-    axs[1].axhline(
-        rel_length.mean(), color="red", linestyle="--", label="Mean relative length"
-    )
-    axs[1].legend(fontsize=12)
-    axs[1].set_xlabel("Episode", fontsize=12)
-    axs[1].set_ylabel("Length [steps]", fontsize=12)
-
-    plt.tight_layout()
-    plt.show()
-
-    return fig
-
-
-def mp4_to_gif(folder: str) -> None:
-    """Convert MP4 video to GIF.
-
-    Parameters
-    ----------
-    folder : str
-        The folder containing MP4 files to be converted.
-
-    """
-    paths = [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith(".mp4")]
-    gif_paths = [p[: p.rfind(".")] + ".gif" for p in paths]
-
-    for video_path, gif_path in zip(paths, gif_paths):
-        with imageio.get_reader(video_path) as reader:
-            fps = reader.get_meta_data()["fps"]
-
-            writer = imageio.get_writer(gif_path, fps=fps, loop=0)
-            for frame in reader:
-                writer.append_data(frame)
-            writer.close()
-
-        os.remove(video_path)
 
 
 def show_metrics(results: pd.DataFrame, roll_length: int = 1) -> Figure:
