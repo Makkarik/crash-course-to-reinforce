@@ -58,9 +58,9 @@ class PolicyNetworkDiscrete(nn.Module):
         super().__init__()
         self.perceptron = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(hidden_dim, output_dim),
             nn.Softmax(dim=1),
         )
@@ -103,7 +103,9 @@ class PolicyNetworkContinious(nn.Module):
 
     """
 
-    def __init__(self, input_dim, hidden_dim, output_dim):
+    def __init__(
+        self, input_dim: int, hidden_dim: int, output_dim: int, eps: float = 1e-6
+    ):
         """Initialize a simple fully-connected network.
 
         Parameters
@@ -114,6 +116,8 @@ class PolicyNetworkContinious(nn.Module):
             Number of neurons in the hidden layer.
         output_dim : int
             Number of discrete actions.
+        eps : float, optional
+            A small number for policy stability (1e-6 by default).
 
         """
         super().__init__()
@@ -122,9 +126,13 @@ class PolicyNetworkContinious(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim),
+            # nn.Linear(hidden_dim, output_dim),
         )
-        self.log_std = nn.Parameter(torch.zeros(output_dim))
+        # self.log_std = nn.Parameter(torch.zeros(output_dim))
+        self.mean_layer = nn.Linear(hidden_dim, output_dim)
+        self.std_layer = nn.Linear(hidden_dim, output_dim)
+
+        self._eps = eps
 
     def forward(self, x):
         """Perform a forward pass through the policy network.
@@ -142,12 +150,18 @@ class PolicyNetworkContinious(nn.Module):
                 - log_probs: Log probabilities of the sampled actions.
 
         """
-        mean = self.perceptron(x)
-        std = torch.exp(self.log_std).expand_as(mean)
-        m = torch.distributions.Normal(mean, std)
-        actions = m.sample()
-        log_probs = m.log_prob(actions)
-        return actions, log_probs
+        features = self.perceptron(x)
+        action_means = self.mean_layer(features)
+        if self.training:
+            action_stds = torch.log(1 + torch.exp(self.std_layer(features)))
+            m = torch.distributions.Normal(
+                action_means + self._eps, action_stds + self._eps
+            )
+            actions = m.sample()
+            log_probs = m.log_prob(actions)
+            return actions, log_probs
+        else:
+            return action_means
 
 
 class Padding:
@@ -276,18 +290,24 @@ class Memory:
         """Get length of buffer."""
         return len(self._rewards)
 
-    def append(self, log_prob, reward, terminated, truncated) -> bool:
+    def append(
+        self,
+        log_prob: torch.Tensor,
+        reward: np.ndarray,
+        terminated: np.ndarray,
+        truncated: np.ndarray,
+    ) -> bool:
         """Append the state results to the agent's memory.
 
         Parameters
         ----------
         log_prob : torch.Tensor
             The log probability of the action taken.
-        reward : float
+        reward : np.ndarray
             The reward received after taking the action.
-        terminated : bool
+        terminated : np.ndarray
             Whether the episode has terminated.
-        truncated : bool
+        truncated : np.ndarray
             Whether the episode has been truncated.
 
         Returns
@@ -298,6 +318,8 @@ class Memory:
         """
         if self._device != log_prob.device:
             log_prob = log_prob.to(self._device)
+        if log_prob.dim() > 1:
+            log_prob = log_prob.sum(dim=1)
         self._log_probs.append(log_prob)
         self._rewards.append(reward)
         padding, termination = self._padding_function(terminated, truncated)
@@ -366,7 +388,7 @@ def _seeding(batch_size, n_epochs, seed: int | None = None):
 
 
 def train(  # noqa: PLR0914, PLR0917
-    agent: nn.Module,
+    policy: nn.Module,
     envs: gym.Env,
     optimizer: torch.optim.Optimizer,
     gamma: float,
@@ -378,7 +400,7 @@ def train(  # noqa: PLR0914, PLR0917
 
     Parameters
     ----------
-    agent : nn.Module
+    policy : nn.Module
         The neural network model representing the agent.
     envs : gym.Env
         The environment(s) in which the agent will be trained.
@@ -410,8 +432,8 @@ def train(  # noqa: PLR0914, PLR0917
     seeds = _seeding(seed=seed, batch_size=batch_size, n_epochs=n_epochs)
     # Prepare iteration memory
     memory = Memory(discount_factor=gamma, batch_size=batch_size, device=device)
-    agent.train()
-    agent = agent.to(device)
+    policy.train()
+    policy = policy.to(device)
     # Reserve lists for stats
     rewards = []
     lengths = []
@@ -429,7 +451,7 @@ def train(  # noqa: PLR0914, PLR0917
             desc=f"Iteration {iteration + 1: >2}/{n_epochs}",
         ):
             # Get actions and log probabilities
-            actions, log_probs = agent(obs.to(device))
+            actions, log_probs = policy(obs.to(device))
             # Get new observations and push them to the memory
             obs, reward, terminated, truncated, _ = envs.step(actions)
             done = memory.append(log_probs, reward, terminated, truncated)
@@ -449,11 +471,11 @@ def train(  # noqa: PLR0914, PLR0917
         optimizer.step()
     norm_len = [length / max_steps for length in lengths]
     stats = {"reward": rewards, "length": lengths, "norm_length": norm_len}
-    return agent, stats
+    return policy, stats
 
 
 def validate(
-    agent: nn.Module,
+    policy: nn.Module,
     env: gym.Env,
     n_episodes: int,
     device: str = "cpu",
@@ -463,7 +485,7 @@ def validate(
 
     Parameters
     ----------
-    agent : nn.Module
+    policy : nn.Module
         The neural network model representing the agent.
     env : gym.Env
         The environment in which the agent operates.
@@ -489,8 +511,8 @@ def validate(
         torch.manual_seed(seed=seed)
     seeds = _seeding(seed=seed, batch_size=1, n_epochs=n_episodes)
 
-    agent.eval()
-    agent = agent.to(device)
+    policy.eval()
+    policy = policy.to(device)
     env = gym.wrappers.RecordEpisodeStatistics(env, buffer_length=n_episodes)
 
     with torch.no_grad():
@@ -498,7 +520,7 @@ def validate(
             obs, _ = env.reset(seed=seeds[episode][0])
             done = False
             while not done:
-                actions = agent(obs.to(device))
+                actions = policy(obs.to(device))
                 obs, _, terminated, truncated, _ = env.step(actions)
                 done = terminated or truncated
 
