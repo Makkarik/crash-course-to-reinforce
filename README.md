@@ -52,20 +52,23 @@ The project uses a highway driving simulation based on [HighwayEnv](https://gith
 
 The environment supports three types of action spaces:
 
-- **Continuous Action Space:**  
-  - **Acceleration:** A continuous value in the range $[-5.0,\, 5.0]$ m/s².
-  - **Steering (Wheel Angle):** A continuous value in the range $\left[-\frac{\pi}{4},\, \frac{\pi}{4}\right]$ radians.
+#### Continuous Action Space:
 
-- **Discrete Action Space:**  
-  A quantized version of the continuous action space, often discretized into 3 levels.
+- **Acceleration:** A continuous value in the range $[-5.0,\, 5.0]$ m/s².
+- **Steering (Wheel Angle):** A continuous value in the range $\left[-\frac{\pi}{4},\, \frac{\pi}{4}\right]$ radians.
 
-- **Discrete Meta-Action Space:**  
-  A set of 5 high-level actions:
-    - 0 : LANE_LEFT - Change to the left lane. 
-    - 1 : IDLE - Maintain the current lane. 
-    - 2 : LANE_RIGHT - Change to the right lane. 
-    - 3 : FASTER - Increase speed. 
-    - 4 : SLOWER - Decrease speed.
+#### Discrete Action Space:
+
+A quantized version of the continuous action space, often discretized into 3 levels.
+
+#### Discrete Meta-Action Space:
+
+A set of 5 high-level actions:
+  - 0 : LANE_LEFT - Change to the left lane. 
+  - 1 : IDLE - Maintain the current lane. 
+  - 2 : LANE_RIGHT - Change to the right lane. 
+  - 3 : FASTER - Increase speed. 
+  - 4 : SLOWER - Decrease speed.
 
 These meta-actions are internally mapped to acceleration and steering commands via an integrated controller.
 
@@ -73,7 +76,7 @@ These meta-actions are internally mapped to acceleration and steering commands v
 
 The environment’s built-in controllers convert agent actions into vehicle control commands:
 
-- **Longitudinal Controller:**
+#### Longitudinal Controller:
 
 Uses a proportional control law:
 
@@ -86,11 +89,11 @@ where:
 - $v$ is the current speed,
 - $K_p = 1/\tau_a$ with $\tau_a = 0.6$.
 
-- **Lateral Controller:**
+#### Lateral Controller:
 
 Implemented using a proportional-derivative approach split into:
 
-- **Positional Control:**
+#### Positional Control:
 
 $$
 \begin{cases}
@@ -99,7 +102,7 @@ v_{\text{lat},r} = -K_{p,\text{lat}} \Delta_{\text{lat}}, \\
 \end{cases}
 $$
 
-- **Heading Control:**
+#### Heading Control:
 
 $$
 \begin{cases}
@@ -128,8 +131,7 @@ $$
 \end{cases}
 $$
 
-- **State Space:**  
-The state includes a 5-dimensional vector for the ego-vehicle and a 7-dimensional vector for each ambient vehicle. Additional parameters (vehicle dimensions, collision flags, etc.) are also part of the state. In meta-action mode, the controller contributes extra features.
+**State Space:** The state includes a 5-dimensional vector for the ego-vehicle and a 7-dimensional vector for each ambient vehicle. Additional parameters (vehicle dimensions, collision flags, etc.) are also part of the state. In meta-action mode, the controller contributes extra features.
 
 ### Reward Function
 
