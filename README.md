@@ -77,14 +77,14 @@ The environment’s built-in controllers convert agent actions into vehicle cont
 
 Uses a proportional control law:
 
-\[
+$$
 a = K_p \,(v_r - v)
-\]
+$$
 
 where:
-- \(v_r\) is the reference speed (set by the meta-actions),
-- \(v\) is the current speed,
-- \(K_p = 1/\tau_a\) with \(\tau_a = 0.6\).
+- $v_r$ is the reference speed (set by the meta-actions),
+- $v$ is the current speed,
+- $K_p = 1/\tau_a$ with $\tau_a = 0.6$.
 
 - **Lateral Controller:**
 
@@ -92,22 +92,22 @@ Implemented using a proportional-derivative approach split into:
 
 - **Positional Control:**
 
-  \[
+  $$
   \begin{cases}
   v_{\text{lat},r} = -K_{p,\text{lat}} \Delta_{\text{lat}}, \\
   \Delta \psi_{r} = \arcsin\left(\frac{v_{\text{lat},r}}{v}\right),
   \end{cases}
-  \]
+  $$
 
 - **Heading Control:**
 
-  \[
+  $$
   \begin{cases}
   \psi_r = \psi_L + \Delta \psi_{r}, \\
   \dot{\psi}_r = K_{p,\psi} (\psi_r - \psi), \\
   \delta = \arcsin\left(\frac{1}{2}\frac{l}{v}\,\dot{\psi}_r\right),
   \end{cases}
-  \]
+  $$
 
 where:
 - \(\psi_L\) is the lane heading,
@@ -118,7 +118,7 @@ where:
 
 The vehicle dynamics follow the bicycle model:
 
-\[
+$$
 \begin{cases}
 \dot{x}=v\cos(\psi+\beta), \\
 \dot{y}=v\sin(\psi+\beta), \\
@@ -126,7 +126,7 @@ The vehicle dynamics follow the bicycle model:
 \dot{\psi}=\frac{v}{l}\sin\beta, \\
 \beta=\tan^{-1}\left(\frac{1}{2}\tan\delta\right),
 \end{cases}
-\]
+$$
 
 - **State Space:**  
 The state includes a 5-dimensional vector for the ego-vehicle and a 7-dimensional vector for each ambient vehicle. Additional parameters (vehicle dimensions, collision flags, etc.) are also part of the state. In meta-action mode, the controller contributes extra features.
@@ -135,9 +135,9 @@ The state includes a 5-dimensional vector for the ego-vehicle and a 7-dimensiona
 
 The reward function balances speed, collision avoidance, and lane positioning:
 
-\[
+$$
 R(s,a) = \alpha\frac{v - v_{\min}}{v_{\max} - v_{\min}} - \beta\,\text{collision} + \gamma\frac{\text{lane index}}{\text{total lanes}}
-\]
+$$
 
 - **Speed Reward:** Incentivizes higher speeds.
 - **Collision Penalty:** Penalizes collisions.
