@@ -9,12 +9,12 @@ from src.agent import PolicyNetworkContinuous, train, validate
 from src.envs import make_envs
 
 SEED = 0x42  # Just a seed
-ENV_NAME = "highway-v0"  # Environment name
+ENV_NAME = "highway-fast-v0"  # Environment name
 NUM_ENVS = 15  # A number of independent environments
 EVAL_ITERATIONS = 5  # A number of iterations for validation stage
 PROGRESS = False  # Enable progressbar
 
-TRIALS = 64  # Total number of trials
+TRIALS = 128  # Total number of trials
 THREADS = 1  # NB: Each environment use the separate process, so the total
 # number of environments is ENVS * THREADS. Change only if CPU utilization is below 50%
 DEFAULT = {"lr": 1e-2, "iterations": 10, "gamma": 0.99, "hidden_dim": 128}
@@ -31,11 +31,22 @@ CONFIG = {
         "grid_step": [2.0, 2.0],  # Specify step for each dimension
         "features": ["presence", "vx"],  # presence and relative speed features
     },
-    "simulation_frequency": 15,  # adjust as needed
+    "lanes_count": 4,
+    "vehicles_count": 50,
+    "simulation_frequency": 25,  # adjust as needed
     "policy_frequency": 5,
     "duration": 40,  # initial episode duration in seconds
     "action": {"type": "ContinuousAction"},  # use the discrete meta-action space
     "offscreen_rendering": True,
+    "collision_reward": -1,  # The reward received when colliding with a vehicle.
+    "reward_speed_range": [20, 30],
+    "other_vehicles_type": "highway_env.vehicle.behavior.IDMVehicle",
+    "screen_width": 600,  # [px]
+    "screen_height": 150,  # [px]
+    "centering_position": [0.3, 0.5],
+    "scaling": 5.5,
+    "show_trajectories": False,
+    "render_agent": True,
 }
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -47,7 +58,7 @@ def objective(trial):  # noqa: F811
     lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
     gamma = trial.suggest_float("gamma", 0.8, 0.99)
     hidden_dim = trial.suggest_int("hidden_dim", 16, 128)
-    iterations = trial.suggest_int("iterations", 10, 20)
+    iterations = trial.suggest_int("iterations", 10, 30)
     # Prepare everything for training
     envs = make_envs(ENV_NAME, NUM_ENVS, config=CONFIG)
     input_dim = envs.observation_space.shape[1]
