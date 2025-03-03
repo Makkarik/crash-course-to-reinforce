@@ -164,27 +164,27 @@ class PolicyNetworkContinuous(nn.Module):
             return action_means
 
 
-class Padding:
-    """A class used to apply padding to terminal and truncated states.
+class Masking:
+    """A class used to apply mask to terminal and truncated states.
 
     Parameters
     ----------
     size : int
-        The size of the padding array.
+        The size of the masking array.
 
     Attributes
     ----------
     _size : int
-        The number of environments to apply the padding.
+        The number of environments to apply the mask.
     _is_terminated : np.ndarray
         An array indicating whether each state has terminated.
 
     Methods
     -------
     reset():
-        Resets the padding function.
+        Resets the mask function.
     __call__(terminated, truncated):
-        Yields the padding values and the total termination flag.
+        Yields the mask values and the total termination flag.
 
     """
 
@@ -276,7 +276,7 @@ class Memory:
 
         """
         self._discount_factor = discount_factor
-        self._padding_function = Padding()
+        self._padding_function = Masking()
 
         self.clear()
 
@@ -285,7 +285,7 @@ class Memory:
         self._padding_function.reset()
         self._log_probs = []
         self._rewards = []
-        self._padding = []
+        self._mask = []
         self._device = None
 
     def __len__(self):
@@ -331,7 +331,7 @@ class Memory:
         self._log_probs.append(log_prob)
         self._rewards.append(reward)
         padding, termination = self._padding_function(terminated, truncated)
-        self._padding.append(padding)
+        self._mask.append(padding)
 
         return termination
 
@@ -353,19 +353,19 @@ class Memory:
         returns = deque()
         # Calculate the cumulative rewards for all runs in the batch
         step_return = np.zeros_like(self._rewards[0])
-        for reward, padding in zip(self._rewards, self._padding):
-            step_return = reward * padding + self._discount_factor * step_return
+        for reward, mask in zip(self._rewards, self._mask):
+            step_return = reward * mask + self._discount_factor * step_return
             returns.appendleft(step_return)
         # Pack rewards to the matrix and rescale them, using the mean and std values of
         # the valid values.
         returns = np.stack(returns, axis=1)
-        returns = self._rescale(returns, self._padding)
+        returns = self._rescale(returns, self._mask)
         returns = torch.tensor(returns, dtype=torch.float).to(self._device)
         # Calculate mean reward and length of all episodes in the batch
         self._rewards = np.stack(self._rewards, axis=1)
-        self._padding = np.stack(self._padding, axis=1)
-        mean_reward = self._get_mean_reward(self._rewards, self._padding)
-        mean_length = self._get_mean_length(self._padding)
+        self._mask = np.stack(self._mask, axis=1)
+        mean_reward = self._get_mean_reward(self._rewards, self._mask)
+        mean_length = self._get_mean_length(self._mask)
         # Compute the reward across timeline (sum over first dimension)
         self._log_probs = torch.stack(self._log_probs, dim=1)
         # Get approximation by averaging the batch
@@ -373,23 +373,23 @@ class Memory:
         return loss, mean_reward, mean_length
 
     @staticmethod
-    def _rescale(returns: np.ndarray, padding: np.ndarray) -> np.ndarray:
+    def _rescale(returns: np.ndarray, mask: np.ndarray) -> np.ndarray:
         returns_copy = np.array(returns, copy=True)
-        returns_copy[padding == 0] = np.nan
+        returns_copy[mask == 0] = np.nan
         mean = np.stack([np.nanmean(returns_copy, axis=1)] * returns.shape[1], axis=1)
         std = np.stack([np.nanstd(returns_copy, axis=1)] * returns.shape[1], axis=1)
         eps = np.finfo(np.float32).eps.item()
         return (returns - mean) / (std + eps)
 
     @staticmethod
-    def _get_mean_reward(reward: np.ndarray, padding: np.ndarray) -> float:
+    def _get_mean_reward(reward: np.ndarray, mask: np.ndarray) -> float:
         copy_of_reward = np.array(reward, copy=True)
-        copy_of_reward[padding == 0] = np.nan
+        copy_of_reward[mask == 0] = np.nan
         return np.nansum(copy_of_reward, axis=1).mean()
 
     @staticmethod
-    def _get_mean_length(padding: np.ndarray) -> float:
-        return padding.sum(axis=1).mean()
+    def _get_mean_length(mask: np.ndarray) -> float:
+        return mask.sum(axis=1).mean()
 
 
 def _seeding(batch_size, n_epochs, seed: int | None = None):
@@ -540,6 +540,8 @@ def validate(  # noqa: PLR0917
             done = False
             while not done:
                 actions = policy(obs.to(device))
+                if actions.dim() > 1:
+                    actions = actions[0]
                 obs, _, terminated, truncated, _ = env.step(actions)
                 done = terminated or truncated
 

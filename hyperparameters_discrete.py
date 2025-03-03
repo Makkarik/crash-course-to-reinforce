@@ -6,12 +6,12 @@ import torch
 from optuna import trial  # noqa: F401
 
 from src.agent import PolicyNetworkDiscrete, train, validate
-from src.envs import make_envs
+from src.envs import make_env, make_envs
 
 SEED = 0x42  # Just a seed
 ENV_NAME = "highway-fast-v0"  # Environment name
 NUM_ENVS = 15  # A number of independent environments
-EVAL_ITERATIONS = 5  # A number of iterations for validation stage
+EVAL_ITERATIONS = 9  # A number of iterations for validation stage
 PROGRESS = False  # Enable progressbar
 
 TRIALS = 128  # Total number of trials
@@ -70,10 +70,10 @@ def objective(trial):  # noqa: F811
         policy, envs, optimizer, gamma, iterations, device, SEED, PROGRESS
     )
     # Validate the policy
-    envs = make_envs(ENV_NAME, NUM_ENVS, config=CONFIG)
+    envs = make_env(ENV_NAME, config=CONFIG)
     results = validate(optimized_policy, envs, EVAL_ITERATIONS, device, SEED, PROGRESS)
 
-    return np.array(results["mean_reward"]).mean()
+    return np.array(results["reward"]).mean()
 
 
 if __name__ == "__main__":
