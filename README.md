@@ -52,20 +52,23 @@ The project uses a highway driving simulation based on [HighwayEnv](https://gith
 
 The environment supports three types of action spaces:
 
-- **Continuous Action Space:**  
-  - **Acceleration:** A continuous value in the range $[-5.0,\, 5.0]$ m/s².
-  - **Steering (Wheel Angle):** A continuous value in the range $\left[-\frac{\pi}{4},\, \frac{\pi}{4}\right]$ radians.
+#### Continuous Action Space:
 
-- **Discrete Action Space:**  
-  A quantized version of the continuous action space, often discretized into 3 levels.
+- **Acceleration:** A continuous value in the range $[-5.0,\, 5.0]$ m/s².
+- **Steering (Wheel Angle):** A continuous value in the range $\left[-\frac{\pi}{4},\, \frac{\pi}{4}\right]$ radians.
 
-- **Discrete Meta-Action Space:**  
-  A set of 5 high-level actions:
-    - 0 : LANE_LEFT - Change to the left lane. 
-    - 1 : IDLE - Maintain the current lane. 
-    - 2 : LANE_RIGHT - Change to the right lane. 
-    - 3 : FASTER - Increase speed. 
-    - 4 : SLOWER - Decrease speed.
+#### Discrete Action Space:
+
+A quantized version of the continuous action space, often discretized into 3 levels.
+
+#### Discrete Meta-Action Space:
+
+A set of 5 high-level actions:
+  - 0 : LANE_LEFT - Change to the left lane. 
+  - 1 : IDLE - Maintain the current lane. 
+  - 2 : LANE_RIGHT - Change to the right lane. 
+  - 3 : FASTER - Increase speed. 
+  - 4 : SLOWER - Decrease speed.
 
 These meta-actions are internally mapped to acceleration and steering commands via an integrated controller.
 
@@ -73,7 +76,7 @@ These meta-actions are internally mapped to acceleration and steering commands v
 
 The environment’s built-in controllers convert agent actions into vehicle control commands:
 
-- **Longitudinal Controller:**
+#### Longitudinal Controller:
 
 Uses a proportional control law:
 
@@ -86,11 +89,11 @@ where:
 - $v$ is the current speed,
 - $K_p = 1/\tau_a$ with $\tau_a = 0.6$.
 
-- **Lateral Controller:**
+#### Lateral Controller:
 
 Implemented using a proportional-derivative approach split into:
 
-- **Positional Control:**
+#### Positional Control:
 
 $$
 \begin{cases}
@@ -99,7 +102,7 @@ v_{\text{lat},r} = -K_{p,\text{lat}} \Delta_{\text{lat}}, \\
 \end{cases}
 $$
 
-- **Heading Control:**
+#### Heading Control:
 
 $$
 \begin{cases}
@@ -128,8 +131,7 @@ $$
 \end{cases}
 $$
 
-- **State Space:**  
-The state includes a 5-dimensional vector for the ego-vehicle and a 7-dimensional vector for each ambient vehicle. Additional parameters (vehicle dimensions, collision flags, etc.) are also part of the state. In meta-action mode, the controller contributes extra features.
+**State Space:** The state includes a 5-dimensional vector for the ego-vehicle and a 7-dimensional vector for each ambient vehicle. Additional parameters (vehicle dimensions, collision flags, etc.) are also part of the state. In meta-action mode, the controller contributes extra features.
 
 ### Reward Function
 
@@ -166,27 +168,50 @@ The core training of the REINFORCE agent is implemented in `agent.py` and is fur
 - `PolicyNetworkDiscrete`: For discrete action spaces.
 - `PolicyNetworkContinious`: For continuous action spaces.
 
-- **Experience Memory:**  
-The `Memory` class stores log probabilities, rewards, and applies a padding mechanism to handle episodes that finish at different times.
+- **Experience Memory:**  The `Memory` class stores log probabilities, rewards, and applies a padding mechanism to handle episodes that finish at different times.
 
-- **Training Loop:**  
-The `train` function performs:
-- Environment resets with seeding.
-- Action selection and experience collection.
-- Backpropagation after computing gradients based on full trajectories.
+- **Training Loop:**  The `train` function performs:
+  - Environment resets with seeding.
+  - Action selection and experience collection.
+  - Backpropagation after computing gradients based on full trajectories.
 
-- **Validation:**  
-The `validate` function runs the agent in a validation environment and returns metrics such as mean reward and episode length.
+- **Validation:**  The `validate` function runs the agent in a validation environment and returns metrics such as mean reward and episode length.
 
 Refer to the `reinforce.ipynb` notebook for detailed training and evaluation examples.
 
 ## Notebooks
 
-- **reinforce.ipynb:**  
-Provides a comprehensive walkthrough of the REINFORCE training process, from setting up environments and networks to training and validation.
+- **reinforce.ipynb:**  Provides a comprehensive walkthrough of the REINFORCE training process, from setting up environments and networks to training and validation.
 
-- **baselines.ipynb:**  
-Benchmarks the REINFORCE agent against the Random and Value Iteration baseline agents. Includes visualizations and sample videos of agent performance.
+- **baselines.ipynb:**  Benchmarks the REINFORCE agent against the Random and Value Iteration baseline agents. Includes visualizations and sample videos of agent performance.
+
+## Hyperparameter Optimization
+
+The project includes scripts for hyperparameter optimization using [Optuna](https://optuna.org/). These scripts automatically search for the best hyperparameters by maximizing the mean reward on the validation set. Two separate optimization scripts are provided:
+
+### Discrete Action Space Optimization
+
+**Script:** `hyperparameters_discrete.py`  
+
+**Overview:**  This script tunes the hyperparameters for the discrete action space environment. Key parameters such as:
+- Learning Rate (lr)
+- Discount Factor (gamma)
+- Hidden Layer Dimension (hidden_dim)
+- Number of Training Iterations (iterations)
+
+are optimized over a predefined number of trials (default: 64). The process uses multiple independent environments (NUM_ENVS = 15) and enqueues a default trial to guide the search. The best-performing trial's details and statistics are saved as a CSV file in the results directory.
+
+### Continuous Action Space Optimization
+
+**Script:** `hyperparameters_continuous.py`  
+
+**Overview:** Similarly, this script is intended for tuning the hyperparameters for continuous action space environments. Although the provided implementation mirrors the discrete case (using `PolicyNetworkDiscrete`), it can be adapted to use a continuous policy network (e.g., `PolicyNetworkContinious`). The optimization procedure is identical:
+- The script suggests values for lr, gamma, hidden_dim, and iterations.
+- It creates multiple environments and trains the agent.
+- It then validates the trained policy and returns the mean reward.
+- Results are recorded in a CSV file.
+
+Both scripts leverage the Optuna TPESampler with a fixed seed for reproducibility.
 
 ## Results and Observations
 
