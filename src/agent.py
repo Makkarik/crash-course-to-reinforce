@@ -188,14 +188,13 @@ class Padding:
 
     """
 
-    def __init__(self, size: int):
+    def __init__(self):
         """Initialize padding function."""
-        self._size = size
         self.reset()
 
     def reset(self):
         """Reset the padding function."""
-        self._is_terminated = np.full(shape=self._size, fill_value=False)
+        self._is_terminated = None
 
     def __call__(
         self, terminated: np.ndarray, truncated: np.ndarray
@@ -218,6 +217,9 @@ class Padding:
             terminal states and the training loop should be stopped.
 
         """
+        # Init internal state at first step
+        if self._is_terminated is None:
+            self._is_terminated = np.full_like(terminated, False)
         # As the function has a lag, we need firstly yield the previous values
         output = np.logical_not(self._is_terminated).astype(int)
         # Then we update the values
@@ -260,7 +262,7 @@ class Memory:
 
     """
 
-    def __init__(self, discount_factor: float, batch_size: int, device: torch.device):
+    def __init__(self, discount_factor: float):
         """Initialize the agent with the given parameters.
 
         Parameters
@@ -274,8 +276,7 @@ class Memory:
 
         """
         self._discount_factor = discount_factor
-        self._padding_function = Padding(batch_size)
-        self._device = device
+        self._padding_function = Padding()
 
         self.clear()
 
@@ -285,6 +286,7 @@ class Memory:
         self._log_probs = []
         self._rewards = []
         self._padding = []
+        self._device = None
 
     def __len__(self):
         """Get length of buffer."""
@@ -316,8 +318,14 @@ class Memory:
             The termination status after padding.
 
         """
-        if self._device != log_prob.device:
-            log_prob = log_prob.to(self._device)
+        if self._device is None:
+            self._device = log_prob.device
+        elif self._device != log_prob.device:
+            msg = (
+                f"Input tensor's device '{log_prob.device}' does not match the "
+                f"memorized one '{self._device}'"
+            )
+            raise ValueError(msg)
         if log_prob.dim() > 1:
             log_prob = log_prob.sum(dim=1)
         self._log_probs.append(log_prob)
@@ -336,6 +344,12 @@ class Memory:
             A loss for back propogation.
 
         """
+        if self._device is None:
+            msg = (
+                ".loss() method can not be called before putting at least one value"
+                " to the memory with .append() method!"
+            )
+            raise Exception(msg)
         returns = deque()
         # Calculate the cumulative rewards for all runs in the batch
         step_return = np.zeros_like(self._rewards[0])
@@ -431,13 +445,12 @@ def train(  # noqa: PLR0914, PLR0917
         torch.manual_seed(seed=seed)
     seeds = _seeding(seed=seed, batch_size=batch_size, n_epochs=n_epochs)
     # Prepare iteration memory
-    memory = Memory(discount_factor=gamma, batch_size=batch_size, device=device)
+    memory = Memory(discount_factor=gamma)
     policy.train()
     policy = policy.to(device)
     # Reserve lists for stats
     rewards = []
     lengths = []
-    gradients = []
     postfix = None
     # Train the agent
     for iteration in range(n_epochs):
@@ -462,7 +475,6 @@ def train(  # noqa: PLR0914, PLR0917
         # Compute reward and apply padding mask
         gradient, mean_reward, mean_length = memory.loss()
         # Record metrics
-        gradients.append(gradient.detach().cpu().item())
         rewards.append(mean_reward)
         lengths.append(mean_length)
         postfix = {"reward": mean_reward, "length": mean_length}

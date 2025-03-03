@@ -7,7 +7,7 @@ import highway_env  # noqa: F401
 import torch
 
 
-def make_training_envs(
+def make_envs(
     environment: str, num_envs: int = 0, config: dict | None = None
 ) -> gym.Env:
     """Create a vectorized environment for reinforcement learning.
@@ -40,7 +40,7 @@ def make_training_envs(
     return envs
 
 
-def make_val_env(environment: str, config: dict | None = None) -> gym.Env:
+def make_env(environment: str, config: dict | None = None) -> gym.Env:
     """Create an environment for validation with video recording.
 
     Parameters
