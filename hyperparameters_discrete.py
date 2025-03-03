@@ -66,7 +66,7 @@ def objective(trial):  # noqa: F811
     # Train the policy
     policy = PolicyNetworkDiscrete(input_dim, hidden_dim, output_dim)
     optimizer = torch.optim.Adam(params=policy.parameters(), lr=lr)
-    optimized_policy = train(
+    optimized_policy, _ = train(
         policy, envs, optimizer, gamma, iterations, device, SEED, PROGRESS
     )
     # Validate the policy
