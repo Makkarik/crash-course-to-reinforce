@@ -28,6 +28,7 @@ seaborn = "^0.13.2"
 moviepy = "^2.1.2"
 torch = {version = "2.6.0", source = "torch"}
 highway-env = "^1.10.0"
+optuna = "^4.2.1"
 
 [[tool.poetry.source]]
 name = "torch"

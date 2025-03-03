@@ -93,7 +93,7 @@ class PolicyNetworkDiscrete(nn.Module):
             return torch.argmax(probs, dim=1)
 
 
-class PolicyNetworkContinious(nn.Module):
+class PolicyNetworkContinuous(nn.Module):
     """A simple fully-connected policy network for continious action spaces.
 
     Methods
@@ -409,6 +409,7 @@ def train(  # noqa: PLR0914, PLR0917
     n_epochs: int,
     device: str = "cpu",
     seed: int | None = None,
+    pbar: bool = True,
 ) -> tuple:
     """Train the REINFORCE agent.
 
@@ -428,6 +429,8 @@ def train(  # noqa: PLR0914, PLR0917
         The device to run the training on, by default "cpu".
     seed : int or None, optional
         The seed for random number generation, by default None.
+    pbar : bool, optional
+        Enable the progressbar.
 
     Returns
     -------
@@ -462,6 +465,7 @@ def train(  # noqa: PLR0914, PLR0917
             max_steps,
             postfix=postfix,
             desc=f"Iteration {iteration + 1: >2}/{n_epochs}",
+            disable=not pbar,
         ):
             # Get actions and log probabilities
             actions, log_probs = policy(obs.to(device))
@@ -486,12 +490,13 @@ def train(  # noqa: PLR0914, PLR0917
     return policy, stats
 
 
-def validate(
+def validate(  # noqa: PLR0917
     policy: nn.Module,
     env: gym.Env,
     n_episodes: int,
     device: str = "cpu",
     seed: int | None = None,
+    pbar: bool = True,
 ) -> dict:
     """Validate the performance of a reinforcement learning agent over multiple epochs.
 
@@ -507,6 +512,8 @@ def validate(
         The device to run the computations on, by default "cpu".
     seed : int | None, optional
         The seed for random number generation, by default None.
+    pbar : bool, optional
+        Enable the progressbar.
 
     Returns
     -------
@@ -528,7 +535,7 @@ def validate(
     env = gym.wrappers.RecordEpisodeStatistics(env, buffer_length=n_episodes)
 
     with torch.no_grad():
-        for episode in tqdm.trange(n_episodes, desc="Validation"):
+        for episode in tqdm.trange(n_episodes, desc="Validation", disable=not pbar):
             obs, _ = env.reset(seed=seeds[episode][0])
             done = False
             while not done:
