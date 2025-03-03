@@ -188,6 +188,34 @@ Provides a comprehensive walkthrough of the REINFORCE training process, from set
 - **baselines.ipynb:**  
 Benchmarks the REINFORCE agent against the Random and Value Iteration baseline agents. Includes visualizations and sample videos of agent performance.
 
+## Hyperparameter Optimization
+
+The project includes scripts for hyperparameter optimization using [Optuna](https://optuna.org/). These scripts automatically search for the best hyperparameters by maximizing the mean reward on the validation set. Two separate optimization scripts are provided:
+
+### Discrete Action Space Optimization
+
+- **Script:** `hyperparameters_discrete.py`  
+- **Overview:**  
+This script tunes the hyperparameters for the discrete action space environment. Key parameters such as:
+- **Learning Rate (lr)**
+- **Discount Factor (gamma)**
+- **Hidden Layer Dimension (hidden_dim)**
+- **Number of Training Iterations (iterations)**
+
+are optimized over a predefined number of trials (default: 64). The process uses multiple independent environments (NUM_ENVS = 15) and enqueues a default trial to guide the search. The best-performing trial's details and statistics are saved as a CSV file in the results directory.
+
+### Continuous Action Space Optimization
+
+- **Script:** `hyperparameters_continuous.py`  
+- **Overview:**  
+Similarly, this script is intended for tuning the hyperparameters for continuous action space environments. Although the provided implementation mirrors the discrete case (using `PolicyNetworkDiscrete`), it can be adapted to use a continuous policy network (e.g., `PolicyNetworkContinious`). The optimization procedure is identical:
+- The script suggests values for lr, gamma, hidden_dim, and iterations.
+- It creates multiple environments and trains the agent.
+- It then validates the trained policy and returns the mean reward.
+- Results are recorded in a CSV file.
+
+Both scripts leverage the Optuna TPESampler with a fixed seed for reproducibility.
+
 ## Results and Observations
 
 - In a 1Hz policy environment, the Value Iteration Agent performs well, reliably reaching the destination.
