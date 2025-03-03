@@ -53,8 +53,8 @@ The project uses a highway driving simulation based on [HighwayEnv](https://gith
 The environment supports three types of action spaces:
 
 - **Continuous Action Space:**  
-  - **Acceleration:** A continuous value in the range \([-5.0,\, 5.0]\) m/s².
-  - **Steering (Wheel Angle):** A continuous value in the range \(\left[-\frac{\pi}{4},\, \frac{\pi}{4}\right]\) radians.
+  - **Acceleration:** A continuous value in the range $[-5.0,\, 5.0]$ m/s².
+  - **Steering (Wheel Angle):** A continuous value in the range $\left[-\frac{\pi}{4},\, \frac{\pi}{4}\right]$ radians.
 
 - **Discrete Action Space:**  
   A quantized version of the continuous action space, often discretized into 3 levels.
@@ -92,27 +92,27 @@ Implemented using a proportional-derivative approach split into:
 
 - **Positional Control:**
 
-  $$
-  \begin{cases}
-  v_{\text{lat},r} = -K_{p,\text{lat}} \Delta_{\text{lat}}, \\
-  \Delta \psi_{r} = \arcsin\left(\frac{v_{\text{lat},r}}{v}\right),
-  \end{cases}
-  $$
+$$
+\begin{cases}
+v_{\text{lat},r} = -K_{p,\text{lat}} \Delta_{\text{lat}}, \\
+\Delta \psi_{r} = \arcsin\left(\frac{v_{\text{lat},r}}{v}\right),
+\end{cases}
+$$
 
 - **Heading Control:**
 
-  $$
-  \begin{cases}
-  \psi_r = \psi_L + \Delta \psi_{r}, \\
-  \dot{\psi}_r = K_{p,\psi} (\psi_r - \psi), \\
-  \delta = \arcsin\left(\frac{1}{2}\frac{l}{v}\,\dot{\psi}_r\right),
-  \end{cases}
-  $$
+$$
+\begin{cases}
+\psi_r = \psi_L + \Delta \psi_{r}, \\
+\dot{\psi}_r = K_{p,\psi} (\psi_r - \psi), \\
+\delta = \arcsin\left(\frac{1}{2}\frac{l}{v}\,\dot{\psi}_r\right),
+\end{cases}
+$$
 
 where:
-- \(\psi_L\) is the lane heading,
-- \(l = 5\, \text{m}\) is the vehicle length,
-- \(K_{p,\text{lat}}\) and \(K_{p,\psi}\) are controller gains.
+- $\psi_L$ is the lane heading,
+- $l = 5\, \text{m}$ is the vehicle length,
+- $K_{p,\text{lat}}$ and $K_{p,\psi}$ are controller gains.
 
 ### Kinematics and State Space
 
