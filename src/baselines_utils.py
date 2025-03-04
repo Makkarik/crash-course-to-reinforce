@@ -90,7 +90,7 @@ def benchmark(  # noqa: PLR0914
         norm_lengths = np.array(env.length_queue) / length
         results[agent_name, env_name, "length"] = norm_lengths
 
-    results.to_csv(os.path.join(folder, "results.csv"))
+    results.to_csv(os.path.join(folder, "results.csv"), index=False)
     return results
 
 

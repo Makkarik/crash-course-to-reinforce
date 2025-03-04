@@ -57,10 +57,6 @@ The environment supports three types of action spaces:
 - **Acceleration:** A continuous value in the range $[-5.0,\, 5.0]$ m/s².
 - **Steering (Wheel Angle):** A continuous value in the range $\left[-\frac{\pi}{4},\, \frac{\pi}{4}\right]$ radians.
 
-#### Discrete Action Space:
-
-A quantized version of the continuous action space, often discretized into 3 levels.
-
 #### Discrete Meta-Action Space:
 
 A set of 5 high-level actions:
@@ -132,6 +128,18 @@ $$
 $$
 
 **State Space:** The state includes a 5-dimensional vector for the ego-vehicle and a 7-dimensional vector for each ambient vehicle. Additional parameters (vehicle dimensions, collision flags, etc.) are also part of the state. In meta-action mode, the controller contributes extra features.
+
+Omitting the detials, the state space dimension can be calculated as following
+
+$$
+\dim{\mathbb{S}} =
+\begin{cases}
+17(n + 1) - 2, & \text{for continuous action space}, \\
+17(n + 1), & \text{for meta-action space}.
+\end{cases}
+$$
+
+where $n$ - number of ambient vehicles in the environmnet
 
 ### Reward Function
 

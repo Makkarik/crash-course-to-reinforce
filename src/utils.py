@@ -1,8 +1,12 @@
 """Misc utilities."""
 
 import os
-import pandas as pd
+
 import imageio
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
 
 
 def mp4_to_gif(folder: str) -> None:
@@ -29,49 +33,97 @@ def mp4_to_gif(folder: str) -> None:
         os.remove(video_path)
 
 
-def postprocess_results(df: pd.DataFrame, results: dict, step_label: str, agent_label: str) -> pd.DataFrame:
-    """
-    Takes an existing DataFrame (with a 3-level MultiIndex header) and a results
-    dictionary. This function creates two new columns—one for reward and one for normalized length—
-    by writing each result value directly (no averaging). The header for these new columns is built as:
-      Level 0: agent_label (e.g. "Value Iteration")
-      Level 1: step_label (e.g. "Training" or "Validation")
-      Level 2: metric name ("reward" or "norm_length")
+def show_training_results(results: dict) -> Figure:
+    """Show training metrics."""
+    fig, axs = plt.subplots(ncols=2, figsize=(16, 6))
+    iterations = np.arange(len(results["reward"]))
+    axs[0].plot(iterations, results["reward"])
+    axs[0].set_xlabel("Iteration")
+    axs[0].set_ylabel("Cumulative reward")
+    axs[0].grid()
+    axs[0].set_title("Change of the cumulative reward over training iterations")
 
-    Since the results contain a number of values (for example 10 values) which might be more
-    (or less) than the number of rows in the existing df, we reindex df accordingly so that the new
-    columns’ data (one value per row) can be appended “after” the existing rows.
+    axs[1].plot(iterations, results["norm_length"])
+    axs[1].set_xlabel("Iteration")
+    axs[1].set_ylabel("Episode normalized length")
+    axs[1].grid()
+    axs[1].set_title("Change of episode length over iterations")
+    axs[1].set_ylim(0, 1)
 
-    Parameters:
-      df (pd.DataFrame): The original DataFrame.
-      results (dict): Dictionary with keys 'reward' and 'norm_length'. The values for 'reward'
-                      are assumed to be in a deque (or list) and 'norm_length' is a list.
-      step_label (str): Step label such as "Training" or "Validation".
-      agent_label (str): Agent label such as "Value Iteration" or "Random Agent".
+    plt.tight_layout()
+    plt.show()
 
-    Returns:
-      pd.DataFrame: The modified DataFrame with two new columns added.
-    """
-    # Determine number of entries in results (assumed the same for 'reward' and 'norm_length')
-    n_results = len(results['reward'])
+    return fig
 
-    # Create a new DataFrame from the results dictionary.
-    # We convert the rewards deque to a list to ensure proper handling.
-    new_data = {
-        (agent_label, step_label, 'reward'): list(results['reward']),
-        (agent_label, step_label, 'norm_length'): results['norm_length']
-    }
-    new_df = pd.DataFrame(new_data, index=range(n_results))
 
-    # Reindex the original df if necessary so that it has at least n_results rows.
-    # If df has fewer rows, extra rows will be filled with NaN.
-    if len(df) < n_results:
-        df = df.reindex(range(n_results))
-    # If df has more rows than new_df, reindex new_df to align with df's index.
-    elif len(df) > n_results:
-        new_df = new_df.reindex(df.index)
+def append_results(
+    df: pd.DataFrame, results: dict, agent_label: str, env_label: str
+) -> pd.DataFrame:
+    """Append results from run."""
+    for key, value in results.items():
+        df[agent_label, env_label, key] = np.array(value)
+    return df
 
-    # Concatenate the original DataFrame with the new DataFrame of results along columns.
-    df_modified = pd.concat([df, new_df], axis=1)
 
-    return df_modified
+def moving_average(input: np.ndarray, n: int = 500, mode="valid") -> np.ndarray:
+    """Get the moving average."""
+    output = np.convolve(np.array(input).flatten(), np.ones(n), mode=mode) / n
+    if mode == "valid":
+        steps = np.arange(output.size) + n // 2
+    elif mode == "same":
+        steps = np.arange(output.size)
+    return steps, output
+
+
+def compare_results(
+    model_results: pd.DataFrame, baselines: pd.DataFrame, roll_lebgth: int = 1
+):
+    """Compare inference results."""
+    baselines = baselines.xs("Highway 5Hz", axis=1, level=1).mean()
+    fig, axs = plt.subplots(figsize=(16, 6), ncols=2)
+
+    agents, baseline_agents = [], []
+    for option in model_results.columns:
+        if option[0] not in agents:
+            agents.append(option[0])
+
+    for option in baselines.index:
+        if option[0] not in baseline_agents:
+            baseline_agents.append(option[0])
+
+    for metric_idx, metric in enumerate(["reward", "norm_length"]):
+        for agent_idx, agent in enumerate(agents):
+            data = model_results[agent, "Highway 5Hz", metric]
+            axs[metric_idx].plot(
+                *moving_average(data, roll_lebgth),
+                label=f"{agent}",
+                color=f"C{agent_idx}",
+            )
+            mean_value = model_results[agent, "Highway 5Hz", metric].mean()
+            axs[metric_idx].axhline(
+                mean_value,
+                color=f"C{agent_idx}",
+                label=f"{agent} (mean value)",
+                linestyle="--",
+            )
+    for metric_idx, metric in enumerate(["reward", "length"]):
+        for agent_idx, agent in enumerate(baseline_agents):
+            axs[metric_idx].axhline(
+                baselines[agent, metric],
+                color=f"C{agent_idx + 2}",
+                label=f"{agent} (mean value)",
+                linestyle="--",
+            )
+        axs[metric_idx].legend()
+        axs[metric_idx].grid()
+        axs[metric_idx].set_xlabel("Episode")
+
+    axs[0].set_ylabel("Cumulative Reward")
+    axs[1].set_ylabel("Episode normalized length")
+    axs[0].set_title("Cumulative reward at validation")
+    axs[1].set_title("Episode length at validation")
+    axs[1].set_ylim(0, 1.03)
+
+    plt.tight_layout()
+    plt.show()
+    return fig
